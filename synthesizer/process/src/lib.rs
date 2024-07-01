@@ -156,6 +156,8 @@ impl<N: Network> Process<N> {
 
         // Synthesize the 'credits.aleo' verifying keys.
         for function_name in program.functions().keys() {
+            //println!("function in program({}):{}", program.id().name().to_string(), function_name
+              //  .to_string());
             // Load the verifying key.
             let verifying_key = N::get_credits_verifying_key(function_name.to_string())?;
             // Retrieve the number of public and private variables.

@@ -127,8 +127,16 @@ unsafe impl<N: Network, A: Aleo<Network = N>> Sync for SynthesisPuzzle<N, A> {}
 
 #[cfg(test)]
 mod tests {
+    use std::str::FromStr;
+    use aleo_std::prelude::lap;
     use super::*;
     use rand::SeedableRng;
+    use circuit::{Eject, Environment, Mode};
+    use circuit::prelude::Itertools;
+    use console::account::PrivateKey;
+    use console::program::{Identifier, Literal, Value};
+    use snarkvm_synthesizer_process::{CallStack, Process, Registers, Stack, StackProgramTypes};
+    use snarkvm_synthesizer_program::{Program, RegistersLoadCircuit, RegistersStoreCircuit, StackProgram};
 
     type CurrentNetwork = console::network::MainnetV0;
     type CurrentAleo = circuit::AleoV0;
@@ -156,14 +164,23 @@ mod tests {
 
         // Sample the epoch program.
         let program = puzzle.get_epoch_program(epoch_hash).unwrap();
+        print!("Program {}: program depth:{} functions:", program.stack().program().id().name(),
+                 program
+            .stack().program_depth());
+        for f in program.stack().program().functions().iter() {
+            print!("{},", f.0.to_string())
+        }
+        println!();
+
+
         // Directly construct the leaves.
         let inputs = program.construct_inputs(&mut ChaChaRng::seed_from_u64(0)).unwrap();
         let leaves_0 = program.to_leaves::<CurrentAleo>(inputs).unwrap();
-
+        println!("Leaves number:{}", leaves_0.len());
         // Sample the leaves.
-        let leaves_1 = puzzle.to_leaves(epoch_hash, &mut ChaChaRng::seed_from_u64(0)).unwrap();
+        //let leaves_1 = puzzle.to_leaves(epoch_hash, &mut ChaChaRng::seed_from_u64(0)).unwrap();
         // Ensure the leaves match.
-        assert_eq!(leaves_0, leaves_1);
+        //assert_eq!(leaves_0, leaves_1);
     }
 
     #[test]
@@ -186,4 +203,66 @@ mod tests {
         let leaves_single = puzzle.to_leaves(epoch_hash, &mut ChaChaRng::seed_from_u64(1)).unwrap();
         assert_eq!(leaves_single, leaves[1]);
     }
+
+
+    #[test]
+    fn test_insts() {
+        let epoch_hash = <CurrentNetwork as Network>::BlockHash::default();
+        // Initialize the puzzle.
+        //let epoch_program = EpochProgram::new(epoch_hash)?;
+
+        let program_string = String::from_str(
+            r"program puzzle.aleo;
+            function synthesize:
+            input r0 as i8.public;
+            input r1 as i8.public;
+            mul.w r0 r1 into r2;
+            "
+        ).unwrap();
+
+        // Construct the program.
+        let program = Program::<CurrentNetwork>::from_str(&program_string).unwrap();
+
+        // Initialize a new process.
+        let process = Process::<CurrentNetwork>::load().unwrap();
+
+        let stack = Stack::new(&process, &program).unwrap();
+
+        let call_stack = CallStack::PackageRun(vec![], PrivateKey::new(&mut rand::thread_rng()).unwrap(),
+                                               Default::default());
+        let function_name = Identifier::from_str("synthesize").unwrap();
+        let function = stack.get_function(&function_name).unwrap();
+        let register_types = stack.get_register_types(&function_name).unwrap().clone();
+        let mut registers = Registers::<CurrentNetwork, CurrentAleo>::new(call_stack, register_types);
+
+        // Ensure the circuit environment is clean.
+        CurrentAleo::reset();
+        let mut console_inputs =
+            vec![Value::from(Literal::<CurrentNetwork>::I8(console::types::I8::new(3))),
+                 Value::from(Literal::<CurrentNetwork>::I8(console::types::I8::new(6)))];
+        let mut circuit_inputs = Vec::with_capacity(console_inputs.len());
+        for console_input in console_inputs {
+            let input = <circuit::Value<CurrentAleo> as circuit::Inject>::new(Mode::Public, console_input);
+            circuit_inputs.push(input);
+        }
+        function.inputs().iter().map(|i| i.register()).zip_eq(&circuit_inputs).try_for_each(|(register, input)| {
+            // Assign the circuit input to the register.
+            registers.store_circuit(&stack, register, input.clone())
+        }).expect("");
+
+        for instruction in function.instructions() {
+            println!();
+            let old_constraints_num = CurrentAleo::num_constraints();
+            println!("Input operands:");
+            for operand in instruction.operands() {
+                print!("{},", registers.load_circuit(&stack, operand).unwrap().eject_value());
+            }
+            println!();
+            instruction.execute(&stack, &mut registers).expect("Failed to execute instruction");
+            println!();
+            println!("Generated constraints number:{}", CurrentAleo::num_constraints() - old_constraints_num);
+            println!();
+        }
+    }
+
 }

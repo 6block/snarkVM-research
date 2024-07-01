@@ -12,6 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use circuit::Eject;
+use console::program::Plaintext;
+use console::program::Plaintext::{Array, Literal, Struct};
+use snarkvm_synthesizer_program::RegistersLoadCircuit;
 use super::*;
 
 impl<N: Network> EpochProgram<N> {
@@ -38,32 +42,80 @@ impl<N: Network> EpochProgram<N> {
 
         // Ensure the circuit environment is clean.
         A::reset();
-
+        println!("Constants:{}, Public:{}, Private:{}", A::num_constants(), A::num_public(),
+                 A::num_private());
         // Inject the circuit inputs.
         let mut circuit_inputs = Vec::with_capacity(console_inputs.len());
         // Iterate over the console inputs.
         for input in console_inputs {
+            // let old_p = A::num_public();
+            // let old_c = A::num_constants();
+            // let old_pri = A::num_private();
+            // let input_clone = input.clone();
             // Inject the input as `Mode::Public`.
             let input = <circuit::Value<A> as circuit::Inject>::new(Mode::Public, input);
+            //println!("Input:{}", input.eject_value());
+            // let pc = A::num_public() - old_p;
+            // let cc = A::num_constants() - old_c;
+            // let pric = A::num_private() - old_pri;
+            // match input_clone {
+            //     /// A plaintext value.
+            //     Value::Plaintext(a) => match a {
+            //         Literal(v, _) => println!("Plaintext:Literal:{}, generated variable:{} {} {}", v
+            //             .to_type()
+            //             .to_string(), cc, pc, pric),
+            //         /// A struct.
+            //         Struct(_, _) => println!("Plaintext:Struct: generated variable:{} {} {}", cc, pc, pric),
+            //         /// An array.
+            //         Array(_, _) => println!("Plaintext:Array: generated variable:{} {} {}", cc, pc, pric),
+            //     },
+            //     /// A record value.
+            //     Value::Record(_) => println!("Record: generated variable:{} {} {}", cc, pc, pric),
+            //     /// A future.
+            //     Value::Future(_) => println!("Future: generated variable:{} {} {}", cc, pc, pric),
+            // }
             // Store the input.
             circuit_inputs.push(input);
         }
         lap!(timer, "Inject the inputs");
-
+        println!("Constants:{}, Public:{}, Private:{}", A::num_constants(), A::num_public(),
+                 A::num_private());
         // Store the inputs into the registers.
         function.inputs().iter().map(|i| i.register()).zip_eq(&circuit_inputs).try_for_each(|(register, input)| {
             // Assign the circuit input to the register.
             registers.store_circuit(&self.stack, register, input.clone())
         })?;
         lap!(timer, "Store the inputs");
-
+        println!("Constants:{}, Public:{}, Private:{}", A::num_constants(), A::num_public(),
+                 A::num_private());
         // Execute the instructions.
         for instruction in function.instructions() {
             // If the execution fails, bail and return the error.
+            println!("Execute instruction:{instruction}");
+            for operand in instruction.operands() {
+                let value = registers.load_circuit(&self.stack, operand).unwrap().eject_value();
+                match value {
+                    Value::Plaintext(v) => match v {
+                        Literal(l, _) => print!("{} is {},", operand, l.type_name()),
+                        _ => {}
+                    },
+                    _ => {}
+                }
+
+            }
+            println!();
+            let old_constraints_num = A::num_constraints();
+            println!("Input operands:");
+            for operand in instruction.operands() {
+                print!("{},", registers.load_circuit(&self.stack, operand).unwrap().eject_value());
+            }
+            println!();
             if let Err(error) = instruction.execute(&self.stack, &mut registers) {
                 bail!("Failed to execute instruction ({instruction}): {error}");
             }
-
+            println!();
+            println!("Generated constraints number:{}", A::num_constraints() - old_constraints_num);
+            println!();
             #[cfg(feature = "debug")]
             {
                 use colored::Colorize;

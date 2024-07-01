@@ -295,7 +295,7 @@ lto = "thin"
 incremental = true
 
 [profile.test]
-opt-level = 3
+opt-level = 0
 lto = "thin"
 incremental = true
 debug = true

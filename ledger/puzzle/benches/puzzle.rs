@@ -22,7 +22,7 @@ use console::{
     network::{MainnetV0, Network},
 };
 use snarkvm_ledger_puzzle::{Puzzle, PuzzleSolutions};
-use snarkvm_ledger_puzzle_epoch::MerklePuzzle;
+use snarkvm_ledger_puzzle_epoch::{SynthesisPuzzle};
 
 use criterion::Criterion;
 use rand::{self, thread_rng, CryptoRng, RngCore};
@@ -38,7 +38,7 @@ fn puzzle_prove(c: &mut Criterion) {
     let rng = &mut thread_rng();
 
     // Initialize a new puzzle.
-    let puzzle = Puzzle::<MainnetV0>::new::<MerklePuzzle<MainnetV0>>();
+    let puzzle = Puzzle::<MainnetV0>::new::<SynthesisPuzzle::<MainnetV0, circuit::AleoV0>>();
 
     // Initialize an epoch hash.
     let epoch_hash = rng.gen();
@@ -50,27 +50,27 @@ fn puzzle_prove(c: &mut Criterion) {
 }
 
 fn puzzle_verify(c: &mut Criterion) {
-    let rng = &mut thread_rng();
-
-    // Initialize a new puzzle.
-    let puzzle = Puzzle::<MainnetV0>::new::<MerklePuzzle<MainnetV0>>();
-
-    // Initialize an epoch hash.
-    let epoch_hash = rng.gen();
-
-    for batch_size in [1, 2, <MainnetV0 as Network>::MAX_SOLUTIONS] {
-        let solutions = (0..batch_size)
-            .map(|_| {
-                let (address, counter) = sample_address_and_counter(rng);
-                puzzle.prove(epoch_hash, address, counter, None).unwrap()
-            })
-            .collect::<Vec<_>>();
-        let solutions = PuzzleSolutions::new(solutions).unwrap();
-
-        c.bench_function("Puzzle::check_solutions", |b| {
-            b.iter(|| puzzle.check_solutions(&solutions, epoch_hash, 0u64).unwrap())
-        });
-    }
+    // let rng = &mut thread_rng();
+    //
+    // // Initialize a new puzzle.
+    // let puzzle = Puzzle::<MainnetV0>::new::<MerklePuzzle<MainnetV0>>();
+    //
+    // // Initialize an epoch hash.
+    // let epoch_hash = rng.gen();
+    //
+    // for batch_size in [1, 2, <MainnetV0 as Network>::MAX_SOLUTIONS] {
+    //     let solutions = (0..batch_size)
+    //         .map(|_| {
+    //             let (address, counter) = sample_address_and_counter(rng);
+    //             puzzle.prove(epoch_hash, address, counter, None).unwrap()
+    //         })
+    //         .collect::<Vec<_>>();
+    //     let solutions = PuzzleSolutions::new(solutions).unwrap();
+    //
+    //     c.bench_function("Puzzle::check_solutions", |b| {
+    //         b.iter(|| puzzle.check_solutions(&solutions, epoch_hash, 0u64).unwrap())
+    //     });
+    // }
 }
 
 criterion_group! {

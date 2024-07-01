@@ -42,6 +42,8 @@ use indexmap::IndexSet;
 use rand::{prelude::*, SeedableRng};
 use rand_chacha::ChaChaRng;
 use std::{collections::HashMap, str::FromStr};
+use console::program::Literal;
+use crate::PuzzleOperand::{Ephemeral, Input};
 
 /// The number of instructions to sample.
 const NUM_INSTRUCTIONS: usize = 100;
@@ -62,21 +64,52 @@ pub(crate) fn sample_instructions<N: Network>(
 
     // Initialize the instruction set weights.
     let instruction_set_weights = instruction_set::<N>();
+    // let mut counters = HashMap::new();
+    // let mut a = 0;
+    let mut seqs = Vec::new();
+    for sequence in instruction_set_weights.iter() {
+        if sequence.1 > 0 {
+            seqs.push(sequence.0.clone());
+            // let e = counters.entry(sequence.0.len()).or_insert(0);
+            // *e += 1;
+            // for ins in sequence.0.iter() {
+            //     insts.push(ins.clone());
+                // print!("Instruction:{}, operand type:", ins.0);
+                // for operand in ins.1.iter() {
+                //     match operand {
+                //         PuzzleOperand::Ephemeral(t, index) => print!("Ephemeral:({}, {}), ", t, index),
+                //         PuzzleOperand::Input(t, index) => print!("Input:({}, {}), ", t, index),
+                //         PuzzleOperand::Literal(t) => print!("Literal:({}), ", t),
+                //         PuzzleOperand::Register(t) => print!("Register:({}), ", t),
+                //         PuzzleOperand::RegisterOffset(t, index) => print!("RegisterOffset:({}, \
+                //         {}), ", t, index),
+                //         _ => a += 1
+                //     }
+                // }
+                // println!();
+            //}
+        }
+    }
+    // for (s, c) in counters {
+    //     println!("{}:{}, ", s, c);
+    // }
+
 
     // Initialize a counter for opcodes in the program.
     let mut opcode_count = 0;
 
-    'outer: for _ in 0..NUM_INSTRUCTIONS {
+    'outer: for sequence in seqs.iter() {
         // Ensure that we do not exceed the instruction count limit in the middle of a sequence.
-        if opcode_count > NUM_INSTRUCTIONS.saturating_sub(NUM_SEQUENCE_INSTRUCTIONS) {
-            break;
-        }
+        // if opcode_count > NUM_INSTRUCTIONS.saturating_sub(NUM_SEQUENCE_INSTRUCTIONS) {
+        //     break;
+        // }
 
-        // Initialize the instruction and selected literals.
-        let (sequence, _) = instruction_set_weights.choose_weighted(&mut rng, |(_, weight)| *weight).cloned().unwrap();
+        // // Initialize the instruction and selected literals.
+        //  let (sequence, _) = instruction_set_weights.choose_weighted(&mut rng, |(_, weight)| *weight).cloned().unwrap();
 
         // Initialize a cache for the ephemeral registers.
         // This is a mapping from the locator to the one assigned to it in the instruction sequence.
+        let sequence = sequence.clone();
         let mut cache_ephemeral = HashMap::<u16, PuzzleRegister>::new();
 
         // Initialize the constructed sequence.
@@ -310,6 +343,7 @@ pub(crate) fn sample_instructions<N: Network>(
 
             // Check that the instruction is not already contained in the instructions.
             if instructions.contains(&instruction) {
+                println!("Duplicate instruction: {instruction_string}");
                 match cfg!(debug_assertions) {
                     true => panic!("Duplicate instruction: {instruction_string}"),
                     false => eprintln!("Duplicate instruction: {instruction_string}"),
@@ -329,7 +363,7 @@ pub(crate) fn sample_instructions<N: Network>(
             opcode_count += 1;
         }
     }
-
+    //println!("Opcode count:{}", opcode_count);
     Ok(instructions)
 }
 

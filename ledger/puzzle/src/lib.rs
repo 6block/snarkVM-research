@@ -147,6 +147,7 @@ impl<N: Network> Puzzle<N> {
 
         // Construct the leaves of the Merkle tree.
         let leaves = self.get_leaves(partial_solution)?;
+        println!("Leaves number:{}", leaves.len());
         // Get the proof target.
         let proof_target = Self::leaves_to_proof_target(&leaves)?;
 

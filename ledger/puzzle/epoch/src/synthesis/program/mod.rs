@@ -79,14 +79,17 @@ impl<N: Network> EpochProgram<N> {
 
         // Construct the program inputs, as a string.
         let input_string = register_table.input_block().to_string();
-
+        // println!("Input string:");
+        // println!("{}", input_string);
         // Sample the instructions from the given epoch.
         let instructions = sample_instructions::<N>(epoch_hash, &mut register_table)?;
         debug_assert!(!instructions.is_empty());
         // Construct the program instructions, as a string.
         let mut instruction_string = String::new();
+        //println!("Instructions:");
         for instruction in &instructions {
             instruction_string.push_str(&format!("    {instruction}\n"));
+            //println!("    {instruction}");
         }
 
         // Construct the program string.
@@ -98,6 +101,7 @@ function synthesize:
 {instruction_string}
 "
         );
+        println!("Epoch program:\n{}", program_string);
 
         // Construct the program.
         let program = Program::from_str(&program_string)?;

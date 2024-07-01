@@ -90,6 +90,30 @@ impl<N: Network> Display for Literal<N> {
     }
 }
 
+impl<N: Network> Literal<N> {
+    pub fn type_name(&self) -> &'static str {
+        match self {
+            Self::Address(literal) => Address::<N>::type_name(),
+            Self::Boolean(literal) => Boolean::<N>::type_name(),
+            Self::Field(literal) => Field::<N>::type_name(),
+            Self::Group(literal) => Group::<N>::type_name(),
+            Self::I8(literal) => I8::<N>::type_name(),
+            Self::I16(literal) => I16::<N>::type_name(),
+            Self::I32(literal) => I32::<N>::type_name(),
+            Self::I64(literal) => I64::<N>::type_name(),
+            Self::I128(literal) => I128::<N>::type_name(),
+            Self::U8(literal) => U8::<N>::type_name(),
+            Self::U16(literal) => U16::<N>::type_name(),
+            Self::U32(literal) => U32::<N>::type_name(),
+            Self::U64(literal) => U64::<N>::type_name(),
+            Self::U128(literal) => U128::<N>::type_name(),
+            Self::Scalar(literal) => Scalar::<N>::type_name(),
+            Self::Signature(literal) => Signature::<N>::type_name(),
+            Self::String(literal) => StringType::<N>::type_name(),
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

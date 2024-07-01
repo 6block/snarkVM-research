@@ -57,6 +57,9 @@ impl<N: Network> Stack<N> {
 
         // Add the program functions to the stack.
         for function in program.functions().values() {
+            println!("Function name in program({}):{}", program.id().name().to_string(), function
+                .name()
+                .to_string());
             // Add the function to the stack.
             stack.insert_function(function)?;
             // Determine the number of calls for the function.

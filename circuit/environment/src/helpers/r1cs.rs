@@ -62,6 +62,7 @@ impl<F: PrimeField> R1CS<F> {
         let variable = Variable::Constant(Rc::new(value));
         self.constants.push(variable.clone());
         self.counter.increment_constant();
+        print!("(constant, {}, {})", self.num_variables, variable);
         self.num_variables += 1;
         variable
     }
@@ -71,6 +72,7 @@ impl<F: PrimeField> R1CS<F> {
         let variable = Variable::Public(Rc::new((self.public.len() as u64, value)));
         self.public.push(variable.clone());
         self.counter.increment_public();
+        print!("(public, {}, {})", self.num_variables, variable);
         self.num_variables += 1;
         variable
     }
@@ -80,6 +82,7 @@ impl<F: PrimeField> R1CS<F> {
         let variable = Variable::Private(Rc::new((self.private.len() as u64, value)));
         self.private.push(variable.clone());
         self.counter.increment_private();
+        print!("(private, {}, {})", self.num_variables, variable);
         self.num_variables += 1;
         variable
     }
